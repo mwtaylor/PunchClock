@@ -1,0 +1,444 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "DeploymentPhase": {
+            "Type": "String",
+            "Default": "Development",
+            "AllowedValues": [
+                "Development",
+                "Beta",
+                "Pre-Production",
+                "Production"
+            ],
+            "Description": "Deployment phases - Development is for testing changes before commit; Beta is a testing environment on a separate branch; Pre-Production is verification after pushing; Production is final phase"
+        }
+    },
+    "Mappings": {
+        "DeploymentPhase": {
+            "Development": {
+                "ResourceSuffix": "-dev"
+            },
+            "Beta": {
+                "ResourceSuffix": "-beta"
+            },
+            "Pre-Production": {
+                "ResourceSuffix": "-preprod"
+            },
+            "Production": {
+                "ResourceSuffix": ""
+            }
+        },
+        "AccountUniqueIdentifiers": {
+            "033566624584": {
+                "GitHubConnectionArn": "arn:aws:codestar-connections:us-west-2:033566624584:connection/1d078144-f66f-45cb-ab3a-f4215e2c828a"
+            }
+        }
+    },
+    "Resources": {
+        "S3ArtifactsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "Private",
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "BucketName": {
+                    "Fn::Sub": [
+                        "mwtaylor.punch-clock.pipeline-artifacts${Suffix}",
+                        {
+                            "Suffix": {
+                                "Fn::FindInMap": [
+                                    "DeploymentPhase",
+                                    {
+                                        "Ref": "DeploymentPhase"
+                                    },
+                                    "ResourceSuffix"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "CloudWatchLogGroupBuilds": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": [
+                        "/aws/codebuild/${BuildProjectName}",
+                        {
+                            "BuildProjectName": {
+                                "Ref": "CodeBuild"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "IAMCodeBuildRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codebuild.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Description": "Role for CodeBuild to build Punch Clock",
+                "Policies": [
+                    {
+                        "PolicyName": "CodeBuildPunchClock",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "codecommit:GitPull"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:PutObjectAcl",
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "/",
+                                            [
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "S3ArtifactsBucket",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                "*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": {
+                    "Fn::Sub": [
+                        "CodeBuildPunchClock${Suffix}",
+                        {
+                            "Suffix": {
+                                "Fn::FindInMap": [
+                                    "DeploymentPhase",
+                                    {
+                                        "Ref": "DeploymentPhase"
+                                    },
+                                    "ResourceSuffix"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "IAMPipelineRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codepipeline.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Description": "Role for CodePipeline to use for the main Punch Clock pipeline",
+                "Policies": [
+                    {
+                        "PolicyName": "CodePipelinePunchClock",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "codestar-connections:UseConnection"
+                                    ],
+                                    "Resource": {
+                                        "Fn::FindInMap": [
+                                            "AccountUniqueIdentifiers",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            "GitHubConnectionArn"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "codebuild:StartBuild",
+                                        "codebuild:BatchGetBuilds"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "CodeBuild",
+                                            "Arn"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "S3ArtifactsBucket",
+                                            "Arn"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:PutObjectAcl",
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "/",
+                                            [
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "S3ArtifactsBucket",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                "*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": {
+                    "Fn::Sub": [
+                        "CodePipelinePunchClock${Suffix}",
+                        {
+                            "Suffix": {
+                                "Fn::FindInMap": [
+                                    "DeploymentPhase",
+                                    {
+                                        "Ref": "DeploymentPhase"
+                                    },
+                                    "ResourceSuffix"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "CodeBuild": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/amazonlinux2-aarch64-standard:2.0",
+                    "Type": "ARM_CONTAINER"
+                },
+                "Name": {
+                    "Fn::Sub": [
+                        "PunchClockBuild${Suffix}",
+                        {
+                            "Suffix": {
+                                "Fn::FindInMap": [
+                                    "DeploymentPhase",
+                                    {
+                                        "Ref": "DeploymentPhase"
+                                    },
+                                    "ResourceSuffix"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "IAMCodeBuildRole",
+                        "Arn"
+                    ]
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE"
+                },
+                "TimeoutInMinutes": 5
+            }
+        },
+        "Pipeline": {
+            "Type": "AWS::CodePipeline::Pipeline",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": [
+                        "PunchClock${Suffix}",
+                        {
+                            "Suffix": {
+                                "Fn::FindInMap": [
+                                    "DeploymentPhase",
+                                    {
+                                        "Ref": "DeploymentPhase"
+                                    },
+                                    "ResourceSuffix"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ArtifactStore": {
+                    "Type": "S3",
+                    "Location": {
+                        "Ref": "S3ArtifactsBucket"
+                    }
+                },
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "IAMPipelineRole",
+                        "Arn"
+                    ]
+                },
+                "Stages": [
+                    {
+                        "Name": "Source",
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeStarSourceConnection",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ConnectionArn": {
+                                        "Fn::FindInMap": [
+                                            "AccountUniqueIdentifiers",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            "GitHubConnectionArn"
+                                        ]
+                                    },
+                                    "FullRepositoryId": "mwtaylor/PunchClock",
+                                    "BranchName": "main"
+                                },
+                                "Name": "GitHubSource",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "PunchClockSource"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "Build",
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Build",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeBuild",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "CodeBuild"
+                                    }
+                                },
+                                "Name": "Build",
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "PunchClockSource"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "IAMBuildLogsPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": {
+                                "Fn::GetAtt": [
+                                    "CloudWatchLogGroupBuilds",
+                                    "Arn"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "PolicyName": {
+                    "Fn::Sub": [
+                        "CodeBuildPunchClockLogs${Suffix}",
+                        {
+                            "Suffix": {
+                                "Fn::FindInMap": [
+                                    "DeploymentPhase",
+                                    {
+                                        "Ref": "DeploymentPhase"
+                                    },
+                                    "ResourceSuffix"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "IAMCodeBuildRole"
+                    }
+                ]
+            }
+        }
+    }
+}
