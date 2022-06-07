@@ -1,10 +1,14 @@
 version: 0.2
 
 phases:
+  pre_build:
+    commands:
+      - "mkdir -p artifacts"
   build:
     commands:
-      - touch helloworld
+      - "(cd WorkManagementApp && zip -r - *.rb) > artifacts/WorkManagement.zip"
 
 artifacts:
+  base-directory: artifacts
   files:
-    - helloworld
+    - WorkManagement.zip
