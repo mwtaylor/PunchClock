@@ -1,14 +1,12 @@
 version: 0.2
 
 phases:
-  pre_build:
-    commands:
-      - "mkdir -p artifacts"
   build:
     commands:
-      - "(cd WorkManagementApp && zip -r - *.rb) > artifacts/WorkManagement.zip"
+      - "cd WorkManagementApp && sam build"
 
 artifacts:
-  base-directory: artifacts
+  base-directory: WorkManagementApp/.aws-sam
   files:
-    - WorkManagement.zip
+    - build
+    - build/template.yaml
