@@ -85,42 +85,6 @@ Resources:
         - AttributeName: "Started"
           AttributeType: "N"
       BillingMode: "PAY_PER_REQUEST"
-  IAMStackUpdateRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub
-        - "DataStackUpdate${Suffix}"
-        - Suffix: !FindInMap
-            - "DeploymentPhaseProperties"
-            - !Ref "DeploymentPhase"
-            - "ResourceSuffix"
-      Description: "Role for CloudFormation to update the Data stack"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service:
-                - "cloudformation.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      Policies:
-        - PolicyName: "CodePipelinePunchClock"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "dynamodb:CreateTable"
-                Resource: !GetAtt "DDBPunchClocksTable.Arn"
-              - Effect: "Allow"
-                Action:
-                  - "dynamodb:CreateTable"
-                Resource: !GetAtt "DDBPunchClockPropertiesTable.Arn"
-              - Effect: "Allow"
-                Action:
-                  - "dynamodb:CreateTable"
-                Resource: !GetAtt "DDBWorkLogTable.Arn"
 Outputs:
   StackArn:
     Export:
@@ -142,13 +106,3 @@ Outputs:
             - "ResourceSuffix"
     Description: "The name of this stack for CodePipeline to reference to update"
     Value: !Ref "AWS::StackName"
-  IAMDataStackUpdateRoleArn:
-    Export:
-      Name: !Sub
-        - "IAMDataStackUpdateRoleArn${Suffix}"
-        - Suffix: !FindInMap
-            - "DeploymentPhaseProperties"
-            - !Ref "DeploymentPhase"
-            - "ResourceSuffix"
-    Description: "The role to use in the Pipeline to update the Data stack"
-    Value: !GetAtt "IAMStackUpdateRole.Arn"

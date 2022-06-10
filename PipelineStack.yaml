@@ -159,7 +159,7 @@ Resources:
                 Resource:
                   "Fn::ImportValue":
                     !Sub
-                    - "IAMDataStackUpdateRoleArn${Suffix}"
+                    - "DataStackUpdateRoleArn${Suffix}"
                     - Suffix: !FindInMap
                         - "DeploymentPhaseProperties"
                         - !Ref "DeploymentPhase"
@@ -267,12 +267,11 @@ Resources:
                         - !Ref "DeploymentPhase"
                         - "ResourceSuffix"
                 ActionMode: "CREATE_UPDATE"
-                Capabilities: "CAPABILITY_NAMED_IAM"
                 ParameterOverrides: !Sub '{"DeploymentPhase": "${DeploymentPhase}"}'
                 RoleArn:
                   "Fn::ImportValue":
                     !Sub
-                    - "IAMDataStackUpdateRoleArn${Suffix}"
+                    - "DataStackUpdateRoleArn${Suffix}"
                     - Suffix: !FindInMap
                         - "DeploymentPhaseProperties"
                         - !Ref "DeploymentPhase"
