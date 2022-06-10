@@ -268,7 +268,7 @@ Resources:
                         - "ResourceSuffix"
                 ActionMode: "CREATE_UPDATE"
                 Capabilities: "CAPABILITY_NAMED_IAM"
-                ParameterOverrides: '{"DeploymentPhase": "${DeploymentPhase}"}'
+                ParameterOverrides: !Sub '{"DeploymentPhase": "${DeploymentPhase}"}'
                 RoleArn:
                   "Fn::ImportValue":
                     !Sub
