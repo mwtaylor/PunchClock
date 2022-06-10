@@ -3,8 +3,9 @@ version: 0.2
 phases:
   build:
     commands:
-      - "cd WorkManagementApp && sam build"
-      - "cd WorkManagementApp && sam package --s3-bucket $SAM_ARTIFACTS_BUCKET"
+      - "cd WorkManagementApp"
+      - "sam build"
+      - "sam package --s3-bucket $SAM_ARTIFACTS_BUCKET"
 
 artifacts:
   base-directory: WorkManagementApp/.aws-sam
