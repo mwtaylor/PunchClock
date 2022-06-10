@@ -1,0 +1,67 @@
+Parameters:
+  DeploymentPhase:
+    Type: "String"
+    Default: "Development"
+    AllowedValues:
+      - "Development"
+      - "Beta"
+      - "Pre-Production"
+      - "Production"
+    Description: >
+      Deployment phases - 
+      Development is for testing changes before commit and stack changes are 
+      run manually through Console or CLI; 
+      Beta is used for automated testing of changes before committing to main; 
+      Pre-Production is verification after pushing to main; 
+      Production is the final deployment
+Mappings:
+  DeploymentPhaseProperties:
+    Development:
+      ResourceSuffix: "-dev"
+    Beta:
+      ResourceSuffix: "-beta"
+    Pre-Production:
+      ResourceSuffix: "-preprod"
+    Production:
+      ResourceSuffix: ""
+Resources:
+  IAMDataStackUpdateRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub
+        - "DataStackUpdate${Suffix}"
+        - Suffix: !FindInMap
+            - "DeploymentPhaseProperties"
+            - !Ref "DeploymentPhase"
+            - "ResourceSuffix"
+      Description: "Role for CloudFormation to update the Data stack"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CodePipelinePunchClock"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:CreateTable"
+                  - "dynamodb:DescribeTable"
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*-prod"
+Outputs:
+  DataStackUpdateRole:
+    Export:
+      Name: !Sub
+        - "DataStackUpdateRoleArn${Suffix}"
+        - Suffix: !FindInMap
+            - "DeploymentPhaseProperties"
+            - !Ref "DeploymentPhase"
+            - "ResourceSuffix"
+    Description: "The ARN of the role used for updating the Data CloudFormation stack"
+    Value: !GetAtt "IAMDataStackUpdateRole.Arn"
