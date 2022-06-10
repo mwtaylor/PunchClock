@@ -47,6 +47,21 @@ Resources:
             - "DeploymentPhaseProperties"
             - !Ref "DeploymentPhase"
             - "ResourceSuffix"
+  S3LambdaArtifactsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: "Private"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketName: !Sub
+        - "mwtaylor.punch-clock.pipeline-lambda-artifacts${Suffix}"
+        - Suffix: !FindInMap
+            - "DeploymentPhaseProperties"
+            - !Ref "DeploymentPhase"
+            - "ResourceSuffix"
   CloudWatchLogGroupBuilds:
     Type: "AWS::Logs::LogGroup"
     Properties:
@@ -87,6 +102,15 @@ Resources:
                 Resource: !Join
                   - "/"
                   - - !GetAtt "S3ArtifactsBucket.Arn"
+                    - "*"
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:PutObjectAcl"
+                  - "s3:GetObject"
+                Resource: !Join
+                  - "/"
+                  - - !GetAtt "S3LambdaArtifactsBucket.Arn"
                     - "*"
   IAMPipelineRole:
     Type: "AWS::IAM::Role"
@@ -197,8 +221,16 @@ Resources:
         Type: "CODEPIPELINE"
       Environment:
         ComputeType: "BUILD_GENERAL1_SMALL"
-        Image: "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
-        Type: "ARM_CONTAINER"
+        Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: "SAM_ARTIFACTS_BUCKET"
+            Value: !Sub
+              - "mwtaylor.punch-clock.pipeline-lambda-artifacts${Suffix}"
+              - Suffix: !FindInMap
+                  - "DeploymentPhaseProperties"
+                  - !Ref "DeploymentPhase"
+                  - "ResourceSuffix"
       ServiceRole: !GetAtt "IAMCodeBuildRole.Arn"
       Source:
         Type: "CODEPIPELINE"
@@ -249,6 +281,8 @@ Resources:
                 ProjectName: !Ref "CodeBuild"
               InputArtifacts:
                 - Name: "PunchClockSource"
+              OutputArtifacts:
+                - Name: "PunchClockBuild"
         - Name: "CloudFormation"
           Actions:
             - Name: "DataStack"

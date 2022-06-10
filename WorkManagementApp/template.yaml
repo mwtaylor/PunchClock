@@ -1,20 +1,16 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
-Description: >
-  WorkManagement serverless application and API
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
+Description: "WorkManagement serverless application and API"
 Globals:
   Function:
     Timeout: 3
-
 Resources:
   StartWorkFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: "AWS::Serverless::Function"
     Properties:
-      CodeUri: app/
-      Handler: handler.start_work_handler
-      Runtime: ruby2.7
+      CodeUri: "app/"
+      Handler: "handler.start_work_handler"
+      Runtime: "ruby2.7"
       Architectures:
-        - x86_64
-      MemorySize: 64
+        - "x86_64"
+      MemorySize: 128
