@@ -23,7 +23,7 @@ Mappings:
     Pre-Production:
       ResourceSuffix: "-preprod"
     Production:
-      ResourceSuffix: ""
+      ResourceSuffix: "-prod"
 Resources:
   DDBPunchClocksTable:
     Type: AWS::DynamoDB::Table

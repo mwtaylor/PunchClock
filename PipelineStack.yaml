@@ -26,7 +26,7 @@ Mappings:
       ResourceSuffix: "-preprod"
       CodeBranch: "preprod"
     Production:
-      ResourceSuffix: ""
+      ResourceSuffix: "-prod"
       CodeBranch: "main"
   AccountUniqueIdentifiers:
     033566624584:

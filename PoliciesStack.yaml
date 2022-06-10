@@ -23,7 +23,7 @@ Mappings:
     Pre-Production:
       ResourceSuffix: "-preprod"
     Production:
-      ResourceSuffix: ""
+      ResourceSuffix: "-prod"
 Resources:
   IAMDataStackUpdateRole:
     Type: "AWS::IAM::Role"
