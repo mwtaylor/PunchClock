@@ -18,12 +18,16 @@ Mappings:
   DeploymentPhaseProperties:
     Development:
       ResourceSuffix: "-dev"
+      CodeBranch: "dev"
     Beta:
       ResourceSuffix: "-beta"
+      CodeBranch: "beta"
     Pre-Production:
       ResourceSuffix: "-preprod"
+      CodeBranch: "preprod"
     Production:
       ResourceSuffix: ""
+      CodeBranch: "main"
   AccountUniqueIdentifiers:
     033566624584:
       GitHubConnectionArn: "arn:aws:codestar-connections:us-west-2:033566624584:connection/1d078144-f66f-45cb-ab3a-f4215e2c828a"
@@ -134,6 +138,32 @@ Resources:
                   - "/"
                   - - !GetAtt "S3ArtifactsBucket.Arn"
                     - "*"
+              - Effect: "Allow"
+                Action:
+                  - "cloudformation:DescribeStacks"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "cloudformation:UpdateStack"
+                Resource:
+                  "Fn::ImportValue":
+                    !Sub
+                    - "DataStackArn${Suffix}"
+                    - Suffix: !FindInMap
+                        - "DeploymentPhaseProperties"
+                        - !Ref "DeploymentPhase"
+                        - "ResourceSuffix"
+              - Effect: "Allow"
+                Action:
+                  - "iam:PassRole"
+                Resource:
+                  "Fn::ImportValue":
+                    !Sub
+                    - "IAMDataStackUpdateRoleArn${Suffix}"
+                    - Suffix: !FindInMap
+                        - "DeploymentPhaseProperties"
+                        - !Ref "DeploymentPhase"
+                        - "ResourceSuffix"
   IAMBuildLogsPolicy:
     Type: "AWS::IAM::Policy"
     Properties:
@@ -201,7 +231,10 @@ Resources:
                   - !Ref "AWS::AccountId"
                   - "GitHubConnectionArn"
                 FullRepositoryId: "mwtaylor/PunchClock"
-                BranchName: "main"
+                BranchName: !FindInMap
+                  - "DeploymentPhaseProperties"
+                  - !Ref "DeploymentPhase"
+                  - "CodeBranch"
               OutputArtifacts:
                 - Name: "PunchClockSource"
         - Name: "Build"
@@ -214,5 +247,35 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName: !Ref "CodeBuild"
+              InputArtifacts:
+                - Name: "PunchClockSource"
+        - Name: "CloudFormation"
+          Actions:
+            - Name: "DataStack"
+              ActionTypeId:
+                Category: Deploy
+                Owner: "AWS"
+                Provider: "CloudFormation"
+                Version: 1
+              Configuration:
+                StackName:
+                  "Fn::ImportValue":
+                    !Sub
+                    - "DataStackName${Suffix}"
+                    - Suffix: !FindInMap
+                        - "DeploymentPhaseProperties"
+                        - !Ref "DeploymentPhase"
+                        - "ResourceSuffix"
+                ActionMode: "CREATE_UPDATE"
+                Capabilities: "CAPABILITY_NAMED_IAM"
+                RoleArn:
+                  "Fn::ImportValue":
+                    !Sub
+                    - "IAMDataStackUpdateRoleArn${Suffix}"
+                    - Suffix: !FindInMap
+                        - "DeploymentPhaseProperties"
+                        - !Ref "DeploymentPhase"
+                        - "ResourceSuffix"
+                TemplatePath: "PunchClockSource::DataStack.yaml"
               InputArtifacts:
                 - Name: "PunchClockSource"
