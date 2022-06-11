@@ -313,3 +313,31 @@ Resources:
                 TemplatePath: "PunchClockSource::DataStack.yaml"
               InputArtifacts:
                 - Name: "PunchClockSource"
+        - Name: "SAMDeploy"
+          Actions:
+            - Name: "WorkManagementAppDeploy"
+              ActionTypeId:
+                Category: Deploy
+                Owner: "AWS"
+                Provider: "CloudFormation"
+                Version: 1
+              Configuration:
+                StackName: !Sub
+                  - "WorkManagementApp${Suffix}"
+                  - Suffix: !FindInMap
+                      - "DeploymentPhaseProperties"
+                      - !Ref "DeploymentPhase"
+                      - "ResourceSuffix"
+                ActionMode: "CREATE_UPDATE"
+                ParameterOverrides: !Sub '{"DeploymentPhase": "${DeploymentPhase}"}'
+                RoleArn:
+                  "Fn::ImportValue":
+                    !Sub
+                    - "WorkManagementAppStackUpdateRoleArn${Suffix}"
+                    - Suffix: !FindInMap
+                        - "DeploymentPhaseProperties"
+                        - !Ref "DeploymentPhase"
+                        - "ResourceSuffix"
+                TemplatePath: "PunchClockBuild::template.yaml"
+              InputArtifacts:
+                - Name: "PunchClockBuild"

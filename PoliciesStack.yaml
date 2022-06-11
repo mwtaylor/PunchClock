@@ -45,7 +45,7 @@ Resources:
             Action:
               - "sts:AssumeRole"
       Policies:
-        - PolicyName: "CodePipelinePunchClock"
+        - PolicyName: "DataStackUpdate"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -54,6 +54,34 @@ Resources:
                   - "dynamodb:CreateTable"
                   - "dynamodb:DescribeTable"
                 Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*-prod"
+  IAMWorkManagementAppStackUpdateRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub
+        - "WorkManagementAppUpdate${Suffix}"
+        - Suffix: !FindInMap
+            - "DeploymentPhaseProperties"
+            - !Ref "DeploymentPhase"
+            - "ResourceSuffix"
+      Description: "Role for CloudFormation to update the Work Management SAM stack"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "WorkManagementAppUpdate"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "lambda:ListFunctions"
+                Resource: "*"
 Outputs:
   DataStackUpdateRole:
     Export:
@@ -65,3 +93,13 @@ Outputs:
             - "ResourceSuffix"
     Description: "The ARN of the role used for updating the Data CloudFormation stack"
     Value: !GetAtt "IAMDataStackUpdateRole.Arn"
+  WorkManagementAppStackUpdateRole:
+    Export:
+      Name: !Sub
+        - "WorkManagementAppStackUpdateRoleArn${Suffix}"
+        - Suffix: !FindInMap
+            - "DeploymentPhaseProperties"
+            - !Ref "DeploymentPhase"
+            - "ResourceSuffix"
+    Description: "The ARN of the role used for updating the Work Management SAM stack"
+    Value: !GetAtt "IAMWorkManagementAppStackUpdateRole.Arn"
