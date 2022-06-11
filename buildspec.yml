@@ -5,9 +5,9 @@ phases:
     commands:
       - "cd WorkManagementApp"
       - "sam build"
-      - "sam package --s3-bucket $SAM_ARTIFACTS_BUCKET"
+      - "sam package --s3-bucket $SAM_ARTIFACTS_BUCKET --output-template-file .aws-sam/template.yaml"
 
 artifacts:
   base-directory: WorkManagementApp/.aws-sam
   files:
-    - build/template.yaml
+    - template.yaml
