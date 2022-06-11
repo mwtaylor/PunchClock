@@ -1,3 +1,6 @@
 .idea/
 codebuild/
 artifacts/
+*/.bundle/
+*/.aws-sam/
+*/Gemfile.lock

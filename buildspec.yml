@@ -10,5 +10,4 @@ phases:
 artifacts:
   base-directory: WorkManagementApp/.aws-sam
   files:
-    - build
     - build/template.yaml
